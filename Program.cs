@@ -98,7 +98,21 @@ app.UseAuthorization();
 await SetupDatabaseAsync(app);
 
 // Endpoints básicos
-app.MapGet("/", () => "OK");
+app.MapGet("/", () =>
+{
+    return Results.Ok(new
+    {
+        status = "healthy",
+        service = "Taxi API",
+        timestamp = DateTime.UtcNow,
+        version = "1.0"
+    });
+});
+
+app.MapGet("/healthz", () =>
+{
+    return Results.Ok("healthy");
+});
 
 app.MapGet("/db-status", async (HttpContext httpContext) => {
     try
