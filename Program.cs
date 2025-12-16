@@ -5,18 +5,19 @@ using Npgsql;
 using ProyectoFinalTecWeb.Data;
 using ProyectoFinalTecWeb.Repositories;
 using ProyectoFinalTecWeb.Services;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 var isDatabaseInitialized = false;
 
-// Configurar logging detallado
+// Configurar logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-// Mostrar todas las variables de entorno relevantes
+// Mostrar variables de entorno
 Console.WriteLine("=== ENVIRONMENT VARIABLES ===");
 var envVars = new[] { "DATABASE_URL", "JWT_KEY", "JWT_ISSUER", "JWT_AUDIENCE", "PORT" };
 foreach (var envVar in envVars)
@@ -39,14 +40,25 @@ builder.Services.AddCors(options =>
 
 // JWT
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
-    ?? "DefaultKeyForDevelopment1234567890ABCDEFGH==";
+    ?? throw new InvalidOperationException("JWT_KEY environment variable is not set");
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "TaxiApi";
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "TaxiClient";
 
 Console.WriteLine($"JWT - Issuer: {jwtIssuer}, Audience: {jwtAudience}");
 
-var keyBytes = Encoding.UTF8.GetBytes(jwtKey.PadRight(32, '=')[..32]);
+// Procesar JWT_KEY
+byte[] keyBytes;
+try
+{
+    keyBytes = Convert.FromBase64String(jwtKey);
+}
+catch (FormatException)
+{
+    Console.WriteLine("WARNING: JWT_KEY is not valid Base64, using as UTF-8 string");
+    keyBytes = Encoding.UTF8.GetBytes(jwtKey.PadRight(32, '=')[..32]);
+}
 
+// CONFIGURACIÓN JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -59,6 +71,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            RoleClaimType = ClaimTypes.Role,
             ClockSkew = TimeSpan.Zero
         };
     });
@@ -116,7 +129,7 @@ app.MapGet("/health", async (AppDbContext dbContext) =>
                 status = "initializing",
                 message = "Database is being initialized",
                 timestamp = DateTime.UtcNow
-            }, statusCode: 202); // 202 Accepted (en proceso)
+            }, statusCode: 202);
         }
 
         var canConnect = await dbContext.Database.CanConnectAsync();
@@ -148,6 +161,7 @@ app.MapGet("/", () =>
         timestamp = DateTime.UtcNow
     });
 });
+
 app.MapGet("/healthz", () => Results.Json(new { status = "OK" }));
 
 app.MapGet("/db-status", async (HttpContext httpContext) => {
@@ -219,6 +233,7 @@ Console.WriteLine("Application is starting...");
 
 app.Run();
 
+// Funciones auxiliares
 string GetConnectionString()
 {
     // 1. Intentar con DATABASE_URL de Railway
