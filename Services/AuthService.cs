@@ -221,7 +221,36 @@ namespace ProyectoFinalTecWeb.Services
 
         public async Task<(bool ok, string? response)> ResetPassword(ResetPasswordDto dto)
         {
-            return null;
+            return (false, null);
+        }
+
+        private (string token, int expiresInSeconds) GenerateResetTokenP(ResetPasswordDto dto)
+        {
+            var jwtSection = _configuration.GetSection("Jwt");
+            var key = jwtSection["Key"]!;
+            var issuer = jwtSection["Issuer"];
+            var audience = jwtSection["Audience"];
+            var expireMinutes = int.Parse(jwtSection["ExpiresMinutes"] ?? "15");
+
+            var expires = DateTime.UtcNow.AddMinutes(expireMinutes);
+
+            var time = DateTime.Now.TimeOfDay;
+            var jti = time.Hours * 60 + time.Minutes;
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Email, dto.Email),
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: expires
+            );
+
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+            return (jwt, (int)TimeSpan.FromMinutes(expireMinutes).TotalSeconds);
         }
 
         private (string token, int expiresInSeconds, string jti) GenerateJwtTokenD(Driver driver)
