@@ -234,7 +234,7 @@ namespace ProyectoFinalTecWeb.Services
             return (false, null);
         }
 
-        private (string token, int expiresInSeconds) GenerateResetTokenP(ResetPasswordDto dto)
+        private (string token, int expiresInSeconds) GenerateResetTokenP(Passenger p)
         {
             var jwtSection = _configuration.GetSection("Jwt");
             var key = jwtSection["Key"]!;
@@ -249,7 +249,7 @@ namespace ProyectoFinalTecWeb.Services
 
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Email, dto.Email),
+                new Claim(JwtRegisteredClaimNames.Email, p.Email),
             };
 
             var token = new JwtSecurityToken(
