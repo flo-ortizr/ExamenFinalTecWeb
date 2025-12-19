@@ -219,6 +219,11 @@ namespace ProyectoFinalTecWeb.Services
             return null;
         }
 
+        public async Task<(bool ok, string? response)> ResetPassword(ResetPasswordDto dto)
+        {
+            return null;
+        }
+
         private (string token, int expiresInSeconds, string jti) GenerateJwtTokenD(Driver driver)
         {
             var jwtSection = _configuration.GetSection("Jwt");
